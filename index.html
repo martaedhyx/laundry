@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPACE LAUNDRY - POS System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Animasi Bintang untuk Background */
+        body {
+            background: radial-gradient(circle at bottom, #1b2735 0%, #090a0f 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+        }
+
+        .star-bg {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            background-image: 
+                radial-gradient(2px 2px at 20px 30px, #eee, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 40px 70px, #fff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 50px 160px, #ddd, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 90px 40px, #fff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 130px 80px, #fff, rgba(0,0,0,0));
+            background-repeat: repeat;
+            background-size: 200px 200px;
+            animation: stars 100s linear infinite;
+        }
+
+        @keyframes stars {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-2000px); }
+        }
+
+        /* Efek Kaca (Glassmorphism) */
+        .glass-panel {
+            background: rgba(17, 25, 40, 0.75);
+            backdrop-filter: blur(16px) saturate(180%);
+            -webkit-backdrop-filter: blur(16px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.125);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Toast Animasi */
+        .toast {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            transform: translateY(-20px);
+            opacity: 0;
+        }
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        /* Format Struk Print (Thermal 58mm / 80mm) */
+        #print-section { display: none; }
+        
+        @media print {
+            body * { visibility: hidden; }
+            body { background: white; color: black; min-height: auto; }
+            .star-bg { display: none; }
+            #print-section, #print-section * {
+                visibility: visible;
+            }
+            #print-section {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                max-width: 80mm; /* Ukuran Kertas Thermal */
+                padding: 10px;
+                font-family: monospace;
+                font-size: 12px;
+                display: block;
+            }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <div class="star-bg"></div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2"></div>
+
+    <!-- 1. LANDING PAGE -->
+    <div id="page-landing" class="min-h-screen flex flex-col items-center justify-center text-center p-4">
+        <h1 class="text-6xl md:text-8xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-600 mb-4 tracking-wider" style="text-shadow: 0 0 20px rgba(6,182,212,0.5);">
+            SPACE LAUNDRY
+        </h1>
+        <p class="text-xl text-cyan-200 mb-10 tracking-widest">CLEANING BEYOND LIMITS</p>
+        <button onclick="navigate('page-login')" class="glass-panel px-8 py-3 rounded-full text-cyan-400 font-bold hover:bg-cyan-900/50 hover:text-white transition-all transform hover:scale-105 border-cyan-500">
+            <i class="fas fa-rocket mr-2"></i> MULAI APLIKASI
+        </button>
+    </div>
+
+    <!-- 2. LOGIN PAGE -->
+    <div id="page-login" class="hidden min-h-screen flex items-center justify-center p-4">
+        <div class="glass-panel p-8 rounded-2xl w-full max-w-md relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-600"></div>
+            <h2 class="text-3xl font-bold text-center mb-8 text-white">SYSTEM LOGIN</h2>
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="mb-6">
+                    <label class="block text-sm text-cyan-200 mb-2">Operator ID</label>
+                    <input type="text" id="username" class="w-full bg-gray-900/50 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan-500 transition-colors" autocomplete="off" required>
+                </div>
+                <div class="mb-8">
+                    <label class="block text-sm text-cyan-200 mb-2">Password</label>
+                    <input type="password" id="password" class="w-full bg-gray-900/50 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan-500 transition-colors" required>
+                </div>
+                <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold py-3 rounded-lg hover:shadow-[0_0_15px_rgba(6,182,212,0.6)] transition-all">
+                    LOGIN <i class="fas fa-sign-in-alt ml-2"></i>
+                </button>
+            </form>
+            <button onclick="navigate('page-landing')" class="w-full mt-4 text-gray-400 hover:text-white text-sm">Kembali</button>
+        </div>
+    </div>
+
+    <!-- 3. DASHBOARD / ORDER PAGE -->
+    <div id="page-dashboard" class="hidden min-h-screen flex flex-col h-screen">
+        <!-- Header -->
+        <header class="glass-panel p-4 flex justify-between items-center sticky top-0 z-40">
+            <h2 class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">
+                <i class="fas fa-satellite-dish mr-2 text-cyan-400"></i> SPACE LAUNDRY
+            </h2>
+            <div class="flex items-center gap-4">
+                <span class="text-sm text-cyan-200"><i class="fas fa-user-astronaut"></i> Marta Edhy</span>
+                <button onclick="navigate('page-login')" class="text-red-400 hover:text-red-300 transition-colors">
+                    <i class="fas fa-power-off"></i> Logout
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content (2 Columns: Catalog & Cart) -->
+        <div class="flex-1 flex flex-col md:flex-row overflow-hidden p-4 gap-4">
+            
+            <!-- Katalog Layanan -->
+            <div class="w-full md:w-2/3 glass-panel rounded-xl p-4 flex flex-col h-full overflow-hidden">
+                <h3 class="text-xl font-bold mb-4 text-white border-b border-gray-700 pb-2"><i class="fas fa-tshirt text-blue-400"></i> Menu Layanan</h3>
+                <div class="overflow-y-auto flex-1 pr-2" id="services-container">
+                    <!-- Cards will be generated here by JS -->
+                </div>
+            </div>
+
+            <!-- Keranjang & Checkout -->
+            <div class="w-full md:w-1/3 glass-panel rounded-xl p-4 flex flex-col h-full">
+                <h3 class="text-xl font-bold mb-4 text-white border-b border-gray-700 pb-2"><i class="fas fa-shopping-cart text-cyan-400"></i> Order Aktif</h3>
+                
+                <!-- Input Nama Pelanggan -->
+                <div class="mb-4">
+                    <input type="text" id="customer-name" placeholder="Nama Pelanggan..." class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none">
+                </div>
+
+                <!-- Cart Items -->
+                <div class="flex-1 overflow-y-auto mb-4 border border-gray-700/50 rounded bg-gray-900/30 p-2" id="cart-container">
+                    <div class="text-center text-gray-500 mt-10 text-sm">Keranjang kosong. Pilih layanan.</div>
+                </div>
+
+                <!-- Total & Checkout Btn -->
+                <div class="pt-4 border-t border-gray-700">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-gray-300">Total Tagihan:</span>
+                        <span class="text-2xl font-bold text-cyan-400" id="cart-total">Rp 0</span>
+                    </div>
+                    <button onclick="processCheckout()" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 rounded-lg transition-colors shadow-lg shadow-cyan-900/50">
+                        <i class="fas fa-check-circle"></i> PROSES CHECKOUT
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. CHECKOUT SUCCESS / PRINT PAGE -->
+    <div id="page-checkout" class="hidden min-h-screen flex items-center justify-center p-4">
+        <div class="glass-panel p-8 rounded-2xl w-full max-w-lg text-center">
+            <div class="text-6xl text-green-400 mb-4"><i class="fas fa-check-circle"></i></div>
+            <h2 class="text-3xl font-bold text-white mb-2">Order Berhasil!</h2>
+            <p class="text-gray-300 mb-8" id="checkout-summary-text">Nota telah siap untuk dicetak.</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <button onclick="printBrowser()" class="bg-blue-600 hover:bg-blue-500 text-white py-3 px-4 rounded-lg font-bold transition-all flex items-center justify-center">
+                    <i class="fas fa-print mr-2"></i> Print Biasa / Thermal
+                </button>
+                <button onclick="printBluetooth()" class="bg-indigo-600 hover:bg-indigo-500 text-white py-3 px-4 rounded-lg font-bold transition-all flex items-center justify-center">
+                    <i class="fab fa-bluetooth-b mr-2"></i> Print Bluetooth
+                </button>
+            </div>
+            
+            <button onclick="resetOrder()" class="text-gray-400 hover:text-white border border-gray-600 rounded-lg px-6 py-2 transition-all">
+                <i class="fas fa-arrow-left"></i> Kembali ke Dashboard
+            </button>
+        </div>
+    </div>
+
+    <!-- TEMPLATE UNTUK CETAK (PRINT) -->
+    <div id="print-section">
+        <div style="text-align: center; border-bottom: 1px dashed black; padding-bottom: 10px; margin-bottom: 10px;">
+            <h2 style="margin: 0; font-size: 18px;">SPACE LAUNDRY</h2>
+            <p style="margin: 2px 0; font-size: 10px;">Mojoagung RT 6 RW 1, Kec. Trangkil</p>
+            <p style="margin: 2px 0; font-size: 10px;">Kabupaten Pati | Telp: 085225426169</p>
+            <p style="margin: 2px 0; font-size: 10px;">Owner: Marta Edhy</p>
+        </div>
+        
+        <div style="margin-bottom: 10px; border-bottom: 1px dashed black; padding-bottom: 10px;">
+            <p style="margin: 2px 0;">Tgl : <span id="print-date"></span></p>
+            <p style="margin: 2px 0;">Plg : <span id="print-customer"></span></p>
+        </div>
+
+        <table style="width: 100%; text-align: left; border-collapse: collapse; margin-bottom: 10px;">
+            <thead>
+                <tr style="border-bottom: 1px solid black;">
+                    <th style="padding: 4px 0; width: 40%;">Item</th>
+                    <th style="padding: 4px 0; width: 20%; text-align: center;">Qty</th>
+                    <th style="padding: 4px 0; width: 40%; text-align: right;">Harga</th>
+                </tr>
+            </thead>
+            <tbody id="print-items">
+                <!-- Diisi via JS -->
+            </tbody>
+        </table>
+
+        <div style="border-top: 1px dashed black; padding-top: 10px; text-align: right;">
+            <h3 style="margin: 0; font-size: 14px;">TOTAL: <span id="print-total">Rp 0</span></h3>
+        </div>
+
+        <div style="text-align: center; margin-top: 15px; font-size: 10px;">
+            <p>*** Terima Kasih ***</p>
+            <p>Laundry Bersih Secepat Kilat!</p>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // Database Layanan (Bisa disesuaikan harganya)
+        const services = [
+            { id: 'ck', name: 'Cuci Kering (CK)', price: 4000, unit: 'kg', icon: 'fa-tshirt' },
+            { id: 'cks', name: 'Cuci Kering Setrika (CKS)', price: 6000, unit: 'kg', icon: 'fa-tshirt' },
+            { id: 'setrika', name: 'Setrika Saja', price: 3000, unit: 'kg', icon: 'fa-temperature-low' },
+            { id: 'bijian', name: 'Pakaian Satuan (Bijian)', price: 2000, unit: 'pcs', icon: 'fa-socks' },
+            { id: 'bedcover', name: 'Bedcover', price: 25000, unit: 'pcs', icon: 'fa-bed' },
+            { id: 'sprei', name: 'Sprei', price: 10000, unit: 'pcs', icon: 'fa-bed' },
+            { id: 'jas', name: 'Jas / Safari', price: 15000, unit: 'pcs', icon: 'fa-user-tie' },
+            { id: 'sepatu', name: 'Cuci Sepatu', price: 20000, unit: 'pasang', icon: 'fa-shoe-prints' },
+            { id: 'karpet', name: 'Cuci Karpet', price: 12000, unit: 'meter', icon: 'fa-scroll' }
+        ];
+
+        let cart = [];
+
+        // Utility: Format Rupiah
+        const formatRp = (angka) => {
+            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
+        };
+
+        // Utility: Custom Toast (Pengganti alert)
+        const showToast = (message, type = 'info') => {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let bgClass = 'bg-blue-600';
+            let icon = 'fa-info-circle';
+            
+            if (type === 'success') { bgClass = 'bg-green-600'; icon = 'fa-check-circle'; }
+            if (type === 'error') { bgClass = 'bg-red-600'; icon = 'fa-exclamation-circle'; }
+            if (type === 'warning') { bgClass = 'bg-yellow-600'; icon = 'fa-exclamation-triangle'; }
+
+            toast.className = `${bgClass} text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 toast min-w-[250px]`;
+            toast.innerHTML = `<i class="fas ${icon}"></i> <span>${message}</span>`;
+            
+            container.appendChild(toast);
+            
+            // Animasi masuk
+            setTimeout(() => toast.classList.add('show'), 10);
+            
+            // Animasi keluar
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        };
+
+        // Navigasi SPA
+        const navigate = (pageId) => {
+            document.querySelectorAll('body > div[id^="page-"]').forEach(el => {
+                el.classList.add('hidden');
+            });
+            document.getElementById(pageId).classList.remove('hidden');
+            
+            if (pageId === 'page-dashboard') {
+                renderServices();
+                renderCart();
+            }
+        };
+
+        // Login Logic (Hardcoded sesuai permintaan)
+        const handleLogin = (e) => {
+            e.preventDefault();
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+
+            if (user === 'martaedi' && pass === 'admin123') {
+                showToast('Login Berhasil! Selamat datang Kapten.', 'success');
+                // Reset form
+                document.getElementById('login-form').reset();
+                navigate('page-dashboard');
+            } else {
+                showToast('ID atau Password salah!', 'error');
+            }
+        };
+
+        // Render Katalog Layanan ke Dashboard
+        const renderServices = () => {
+            const container = document.getElementById('services-container');
+            container.innerHTML = '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pb-4"></div>';
+            const grid = container.querySelector('div');
+
+            services.forEach(srv => {
+                const card = document.createElement('div');
+                card.className = 'bg-gray-800/80 border border-gray-700 rounded-lg p-4 hover:border-cyan-500 transition-colors flex flex-col justify-between';
+                card.innerHTML = `
+                    <div>
+                        <div class="text-cyan-400 text-2xl mb-2"><i class="fas ${srv.icon}"></i></div>
+                        <h4 class="text-white font-bold mb-1">${srv.name}</h4>
+                        <p class="text-gray-400 text-sm mb-3">${formatRp(srv.price)} / ${srv.unit}</p>
+                    </div>
+                    <button onclick="promptAddToCart('${srv.id}')" class="w-full bg-blue-600/30 hover:bg-blue-600 text-blue-300 hover:text-white border border-blue-500 rounded py-1.5 text-sm transition-colors">
+                        + Tambah
+                    </button>
+                `;
+                grid.appendChild(card);
+            });
+        };
+
+        // Menambah Item ke Keranjang (Minta jumlah/qty)
+        const promptAddToCart = (id) => {
+            const srv = services.find(s => s.id === id);
+            // Karena tidak pakai alert/prompt bawaan, kita asumsikan tambah 1 per klik
+            // Untuk aplikasi nyata, bisa dibuatkan modal input Qty.
+            // Disini kita tambah 1 setiap klik, dan jika sudah ada, qty bertambah.
+            
+            const existingItem = cart.find(item => item.id === id);
+            if (existingItem) {
+                existingItem.qty += 1;
+                showToast(`Kuantitas ${srv.name} ditambah!`, 'info');
+            } else {
+                cart.push({ ...srv, qty: 1 });
+                showToast(`${srv.name} ditambahkan ke keranjang`, 'success');
+            }
+            renderCart();
+        };
+
+        const updateQty = (id, change) => {
+            const item = cart.find(i => i.id === id);
+            if(item) {
+                item.qty += change;
+                if(item.qty <= 0) {
+                    cart = cart.filter(i => i.id !== id);
+                }
+                renderCart();
+            }
+        }
+
+        // Render Keranjang
+        const renderCart = () => {
+            const container = document.getElementById('cart-container');
+            const totalEl = document.getElementById('cart-total');
+            
+            if (cart.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-500 mt-10 text-sm">Keranjang kosong. Pilih layanan.</div>';
+                totalEl.innerText = formatRp(0);
+                return;
+            }
+
+            container.innerHTML = '';
+            let total = 0;
+
+            cart.forEach(item => {
+                const subtotal = item.price * item.qty;
+                total += subtotal;
+
+                const row = document.createElement('div');
+                row.className = 'flex justify-between items-center border-b border-gray-700/50 py-2 last:border-0';
+                row.innerHTML = `
+                    <div class="flex-1">
+                        <div class="text-sm text-white font-medium">${item.name}</div>
+                        <div class="text-xs text-gray-400">${formatRp(item.price)} x ${item.qty} ${item.unit}</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="flex items-center bg-gray-800 rounded">
+                            <button onclick="updateQty('${item.id}', -1)" class="px-2 text-red-400 hover:text-white">-</button>
+                            <span class="text-sm w-6 text-center">${item.qty}</span>
+                            <button onclick="updateQty('${item.id}', 1)" class="px-2 text-green-400 hover:text-white">+</button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+
+            totalEl.innerText = formatRp(total);
+        };
+
+        // Proses Checkout
+        const processCheckout = () => {
+            const customerName = document.getElementById('customer-name').value.trim();
+            if (cart.length === 0) {
+                showToast('Keranjang masih kosong!', 'warning');
+                return;
+            }
+            if (!customerName) {
+                showToast('Masukkan nama pelanggan terlebih dahulu!', 'warning');
+                document.getElementById('customer-name').focus();
+                return;
+            }
+
+            // Siapkan data untuk print
+            preparePrintData(customerName);
+            
+            showToast('Pesanan berhasil diproses!', 'success');
+            navigate('page-checkout');
+        };
+
+        // Siapkan DOM untuk di-print
+        const preparePrintData = (customerName) => {
+            document.getElementById('print-customer').innerText = customerName;
+            
+            const now = new Date();
+            const dateStr = `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()} ${now.getHours()}:${now.getMinutes()}`;
+            document.getElementById('print-date').innerText = dateStr;
+
+            const tbody = document.getElementById('print-items');
+            tbody.innerHTML = '';
+            let total = 0;
+
+            cart.forEach(item => {
+                const subtotal = item.price * item.qty;
+                total += subtotal;
+                tbody.innerHTML += `
+                    <tr>
+                        <td style="padding: 4px 0;">${item.name}</td>
+                        <td style="padding: 4px 0; text-align: center;">${item.qty}</td>
+                        <td style="padding: 4px 0; text-align: right;">${formatRp(subtotal)}</td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('print-total').innerText = formatRp(total);
+        };
+
+        // Reset Order untuk pesanan baru
+        const resetOrder = () => {
+            cart = [];
+            document.getElementById('customer-name').value = '';
+            renderCart();
+            navigate('page-dashboard');
+        };
+
+        // --- FUNGSI PRINT BIASA (Thermal Browser) ---
+        const printBrowser = () => {
+            window.print();
+        };
+
+        // --- FUNGSI PRINT BLUETOOTH (Web Bluetooth API) ---
+        // Catatan: Membutuhkan Chrome, HTTPS, dan perangkat printer bluetooth (ESC/POS)
+        const printBluetooth = async () => {
+            if (!navigator.bluetooth) {
+                showToast('Browser Anda tidak mendukung Web Bluetooth API.', 'error');
+                return;
+            }
+
+            try {
+                showToast('Mencari perangkat printer bluetooth...', 'info');
+                
+                // Request device
+                const device = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,
+                    optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb'] // UUID Service standar printer serial
+                });
+
+                showToast(`Menghubungkan ke ${device.name}...`, 'info');
+                
+                const server = await device.gatt.connect();
+                const service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb');
+                const characteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb');
+
+                // Generate Teks Struk
+                let customer = document.getElementById('print-customer').innerText;
+                let date = document.getElementById('print-date').innerText;
+                
+                let receiptText = 
+                    "         SPACE LAUNDRY\n" +
+                    "Mojoagung RT 6 RW 1, Kec. Trangkil\n" +
+                    "  Kab. Pati | Telp: 085225426169\n" +
+                    "       Owner: Marta Edhy\n" +
+                    "--------------------------------\n" +
+                    `Tgl: ${date}\n` +
+                    `Plg: ${customer}\n` +
+                    "--------------------------------\n";
+                
+                let total = 0;
+                cart.forEach(item => {
+                    const subtotal = item.price * item.qty;
+                    total += subtotal;
+                    receiptText += `${item.name}\n`;
+                    receiptText += `${item.qty} x ${item.price} = ${subtotal}\n`;
+                });
+
+                receiptText += "--------------------------------\n";
+                receiptText += `TOTAL: Rp ${total}\n`;
+                receiptText += "--------------------------------\n";
+                receiptText += "      *** Terima Kasih ***      \n";
+                receiptText += "  Laundry Bersih Secepat Kilat! \n\n\n";
+
+                // Encode string ke bytes (ESC/POS standar)
+                const encoder = new TextEncoder();
+                const data = encoder.encode(receiptText);
+
+                // Kirim data per chunk (karena BLE punya limit ukuran per paket)
+                const CHUNK_SIZE = 512;
+                for (let i = 0; i < data.length; i += CHUNK_SIZE) {
+                    const chunk = data.slice(i, i + CHUNK_SIZE);
+                    await characteristic.writeValue(chunk);
+                }
+
+                showToast('Struk berhasil dikirim ke printer!', 'success');
+                server.disconnect();
+
+            } catch (error) {
+                console.error(error);
+                showToast(`Gagal Print BT: ${error.message}`, 'error');
+            }
+        };
+
+        // Inisialisasi awal
+        window.onload = () => {
+            // Animasi kecil saat load
+        };
+    </script>
+</body>
+</html>
