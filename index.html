@@ -136,13 +136,13 @@
         .pin-input { letter-spacing: .6em; text-align: center; font-size: 1.5rem !important; font-weight: 700; }
         .pin-input::placeholder { letter-spacing: .3em; font-size: 1rem; font-weight: 400; }
 
-        /* ===== MASKOT: bola hitam "hidup" (SVG + CSS) ===== */
+        /* ===== MASKOT: bola putih "hidup" dengan mata hitam (SVG + CSS) ===== */
         .mascot { position: relative; display: inline-block; aspect-ratio: 1 / 1; cursor: pointer; touch-action: manipulation; }
         .mascot-float { animation: mFloat 4.2s ease-in-out infinite; }
         @keyframes mFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
         .mascot-shadow { height: 10px; margin: 8px auto 0; border-radius: 50%; background: rgba(34,211,238,.35); filter: blur(6px); animation: mShadow 4.2s ease-in-out infinite; }
         @keyframes mShadow { 0%,100% { transform: scaleX(1); opacity: .65; } 50% { transform: scaleX(.72); opacity: .35; } }
-        /* Bola hitam tanpa cincin/lencana putih: hanya bayangan lembut supaya tetap terlihat di latar gelap */
+        /* Bola tanpa cincin/lencana: hanya bayangan lembut + cahaya cyan tipis */
         .mascot-badge {
             width: 100%; height: 100%; border-radius: 9999px; padding: 0; background: transparent;
             filter: drop-shadow(0 6px 14px rgba(0,0,0,.55)) drop-shadow(0 0 12px rgba(34,211,238,.22));
@@ -739,7 +739,7 @@
     }
 
     // ---------------------------------------------------------------------
-    // 7. MASKOT HIDUP: bola hitam dengan dua mata putih (SVG + CSS)
+    // 7. MASKOT HIDUP: bola putih dengan dua mata hitam (SVG + CSS)
     //    - berkedip acak, mata mengikuti kursor / jari
     //    - senang (mata ^ ^) saat disentuh / di-hover
     //    - di halaman PIN: melihat ke kolom input, memejam saat PIN diketik
@@ -756,21 +756,21 @@
             <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false">
                 <defs>
                     <radialGradient id="mg-${uid}" cx="36%" cy="30%" r="75%">
-                        <stop offset="0" stop-color="#3b3b46"/><stop offset=".42" stop-color="#15151b"/><stop offset="1" stop-color="#030305"/>
+                        <stop offset="0" stop-color="#ffffff"/><stop offset=".45" stop-color="#eef1f6"/><stop offset=".82" stop-color="#cfd5de"/><stop offset="1" stop-color="#aeb6c2"/>
                     </radialGradient>
                     <clipPath id="mc-${uid}"><circle cx="50" cy="50" r="47.5"/></clipPath>
                 </defs>
                 <g class="m-head">
                     <circle cx="50" cy="50" r="49" fill="url(#mg-${uid})"/>
-                    <circle cx="50" cy="50" r="48.4" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="1.2"/>
-                    <ellipse cx="30" cy="24" rx="15" ry="7" fill="#fff" opacity=".07" transform="rotate(-35 30 24)"/>
+                    <circle cx="50" cy="50" r="48.4" fill="none" stroke="rgba(15,23,42,.12)" stroke-width="1.2"/>
+                    <ellipse cx="30" cy="24" rx="15" ry="7" fill="#fff" opacity=".9" transform="rotate(-35 30 24)"/>
                     <g clip-path="url(#mc-${uid})">
                         <ellipse class="m-blush" cx="53" cy="47" rx="6" ry="3.2" fill="#ff8fb1" transform="rotate(-25 53 47)"/>
                         <ellipse class="m-blush" cx="86" cy="42" rx="5" ry="2.8" fill="#ff8fb1" transform="rotate(-25 86 42)"/>
                         <g class="m-eyes">
                             ${EYES.map((e) => `<g transform="rotate(-25 ${e.cx} ${e.cy})">
-                                <rect class="m-eye ${e.cls}" x="${e.cx - e.w / 2}" y="${e.cy - e.h / 2}" width="${e.w}" height="${e.h}" rx="${e.w / 2}" fill="#fff"/>
-                                <path class="m-arc" d="M${e.cx - 6} ${e.cy + 3} Q${e.cx} ${e.cy - 7} ${e.cx + 6} ${e.cy + 3}" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round"/>
+                                <rect class="m-eye ${e.cls}" x="${e.cx - e.w / 2}" y="${e.cy - e.h / 2}" width="${e.w}" height="${e.h}" rx="${e.w / 2}" fill="#111318"/>
+                                <path class="m-arc" d="M${e.cx - 6} ${e.cy + 3} Q${e.cx} ${e.cy - 7} ${e.cx + 6} ${e.cy + 3}" fill="none" stroke="#111318" stroke-width="3.6" stroke-linecap="round"/>
                             </g>`).join('')}
                         </g>
                     </g>
