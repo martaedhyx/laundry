@@ -1046,14 +1046,6 @@
         }
     }
 
-    function clearAllData() {
-        Object.values(KEY).forEach((k) => store.del(k)); // order, harga, pengaturan, nomor nota, keranjang
-        store.del(LEGACY_AUTH_KEY);
-        session.del(SESSION_KEY);
-        state.orders = []; state.prices = {}; state.settings = { ...DEFAULT_SETTINGS }; state.seq = {}; state.cart = [];
-        applyPaperStyle();
-    }
-
     function lockApp() {
         session.del(SESSION_KEY);
         while (modalStack.length) modalStack[modalStack.length - 1].close('lock');
@@ -2515,15 +2507,9 @@
                         <button type="button" class="btn-soft text-sm w-full" data-action="lock"><i class="fas fa-lock"></i> Kunci Sekarang</button>
                         <p class="hint mt-3">Kunci aplikasi saat tidak dipakai. Untuk membuka lagi, login dengan ID &amp; PIN operator.</p>
                     </div>
-
-                    <div class="card border-red-500/40">
-                        <h4 class="font-bold text-red-300 mb-1"><i class="fas fa-exclamation-triangle mr-1"></i> Zona Bahaya</h4>
-                        <p class="text-xs text-gray-400 mb-3">Menghapus semua order, harga, dan pengaturan di perangkat ini lalu kembali ke halaman login. Export backup dulu!</p>
-                        <button type="button" class="btn-red w-full text-sm" data-action="wipe"><i class="fas fa-trash"></i> Reset &amp; Hapus Semua Data</button>
-                    </div>
                 </div>
             </div>
-            <p class="text-center text-xs text-gray-500 mt-6">${TOKO.nama} &middot; Owner ${TOKO.owner} &middot; ${TOKO.alamat1}, ${TOKO.alamat2} &middot; ${TOKO.telp}</p>`;
+            <p class="text-center text-xs text-gray-500 mt-8 mb-2 tracking-wide whitespace-nowrap" data-app-footer>Space Laundry | Official Broadcaster</p>`;
         $$('[data-price-id]').forEach((i) => bindMoneyInput(i));
         $('#set-est').addEventListener('change', (e) => { s.estimasiHari = Number(e.target.value); saveSettings(); showToast('Estimasi bawaan disimpan.', 'success', 1800); });
         $('#set-est-jam').addEventListener('change', (e) => { if (/^\d{2}:\d{2}$/.test(e.target.value)) { s.estimasiJam = e.target.value; saveSettings(); showToast('Jam estimasi disimpan.', 'success', 1800); } });
@@ -2549,17 +2535,6 @@
         state.prices = {}; store.del(KEY.prices);
         showToast('Harga dikembalikan ke default.', 'success');
         renderPengaturan();
-    }
-
-    async function wipeAll() {
-        const ok = await confirmDialog({
-            title: 'Hapus Semua Data?', danger: true, requireText: 'HAPUS', confirmText: 'Hapus Semua',
-            html: `<b class="text-red-300">${state.orders.length} order, harga, dan pengaturan</b> di perangkat ini akan dihapus permanen. Pastikan sudah Export backup.<br><span class="text-xs text-gray-400">Login ID &amp; PIN tetap sama.</span>`
-        });
-        if (!ok) return;
-        clearAllData();
-        showToast('Semua data dihapus. Silakan login kembali.', 'success');
-        showAuth();
     }
 
     // ----- Backup: Export / Import JSON -----
@@ -2658,8 +2633,7 @@
         'price-reset': () => resetPrices(),
         'set-paper': (b) => { state.settings.paper = b.dataset.paper; saveSettings(); applyPaperStyle(); renderPengaturan(); showToast(`Ukuran kertas: ${b.dataset.paper} mm`, 'success', 1800); },
         'export': () => exportData(),
-        'import': () => { const f = $('#import-file'); f.value = ''; f.click(); },
-        'wipe': () => wipeAll()
+        'import': () => { const f = $('#import-file'); f.value = ''; f.click(); }
     };
 
     function init() {
