@@ -232,38 +232,23 @@
                 <div class="mascot-shadow" style="width: 58px;"></div>
             </div>
 
-            <!-- Form buat PIN (hanya saat pertama kali) -->
-            <form id="form-setup" class="hidden" autocomplete="off" novalidate>
-                <h2 class="font-brand text-[1.3rem] sm:text-3xl text-center mb-1 text-white">BUAT PIN BARU</h2>
-                <p class="text-center text-sm text-gray-300 mb-6">Selamat datang, Kapten! Buat PIN <b>4&ndash;6 angka</b> untuk membuka aplikasi di perangkat ini.</p>
-                <div class="mb-4">
-                    <label class="lbl" for="setup-pin">PIN Baru</label>
-                    <div class="relative">
-                        <input type="password" id="setup-pin" class="inp pin-input pr-12" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="4-6 angka" autocomplete="off" data-pin-field>
-                        <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 text-gray-400 hover:text-white" data-action="toggle-pin" data-target="setup-pin" aria-label="Tampilkan PIN"><i class="fas fa-eye"></i></button>
-                    </div>
-                </div>
-                <div class="mb-6">
-                    <label class="lbl" for="setup-pin2">Ulangi PIN</label>
-                    <input type="password" id="setup-pin2" class="inp pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="ketik ulang" autocomplete="off" data-pin-field>
-                </div>
-                <button type="submit" id="btn-setup" class="btn-primary w-full py-3">SIMPAN PIN &amp; MASUK <i class="fas fa-check ml-1"></i></button>
-            </form>
-
-            <!-- Form login PIN -->
-            <form id="form-login" class="hidden" autocomplete="off" novalidate>
+            <!-- Form login: ID + PIN operator -->
+            <form id="form-login" novalidate>
                 <h2 class="font-brand text-[1.3rem] sm:text-3xl text-center mb-1 text-white">SYSTEM LOGIN</h2>
-                <p class="text-center text-sm text-gray-300 mb-6">Masukkan PIN operator untuk melanjutkan.</p>
+                <p class="text-center text-sm text-gray-300 mb-6">Masukkan ID dan PIN operator untuk melanjutkan.</p>
+                <div class="mb-4">
+                    <label class="lbl" for="login-id">ID</label>
+                    <input type="text" id="login-id" name="username" class="inp" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="username" maxlength="40" data-look-field>
+                </div>
                 <div class="mb-6">
                     <label class="lbl" for="login-pin">PIN</label>
                     <div class="relative">
-                        <input type="password" id="login-pin" class="inp pin-input pr-12" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="&bull;&bull;&bull;&bull;" autocomplete="off" data-pin-field>
+                        <input type="password" id="login-pin" name="password" class="inp pin-input pr-12" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="current-password" data-pin-field>
                         <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 text-gray-400 hover:text-white" data-action="toggle-pin" data-target="login-pin" aria-label="Tampilkan PIN"><i class="fas fa-eye"></i></button>
                     </div>
                     <p id="login-lock-msg" class="hidden text-xs text-amber-300 mt-2"></p>
                 </div>
                 <button type="submit" id="btn-login" class="btn-primary w-full py-3">LOGIN <i class="fas fa-sign-in-alt ml-1"></i></button>
-                <button type="button" data-action="forgot-pin" class="w-full mt-3 text-sm text-amber-300/90 hover:text-amber-200"><i class="fas fa-key mr-1"></i> Lupa PIN? Reset PIN</button>
             </form>
 
             <button type="button" data-action="go-landing" class="w-full mt-4 text-gray-400 hover:text-white text-sm">Kembali</button>
@@ -439,10 +424,11 @@
     const DEFAULT_SETTINGS = { estimasiHari: 2, estimasiJam: '17:00', paper: '58', lastBackup: null };
 
     const KEY = {
-        auth: 'sl_auth', orders: 'sl_orders', prices: 'sl_prices', settings: 'sl_settings',
+        orders: 'sl_orders', prices: 'sl_prices', settings: 'sl_settings',
         seq: 'sl_seq', cart: 'sl_cart', lock: 'sl_lock'
     };
     const SESSION_KEY = 'sl_session';
+    const LEGACY_AUTH_KEY = 'sl_auth'; // PIN buatan pengguna versi lama (sekarang diabaikan & dihapus)
     const REDUCED_MOTION = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     const BT_SUPPORTED = !!(navigator.bluetooth && window.isSecureContext);
 
@@ -974,20 +960,23 @@
     }
 
     // ---------------------------------------------------------------------
-    // 9. PIN & LOGIN (pengaman lokal, hash SHA-256 + salt)
+    // 9. LOGIN ID + PIN TETAP (pengaman lokal, dicek lewat hash SHA-256)
+    //    ID & PIN tidak ditulis di kode: yang disimpan hanya hash
+    //    SHA-256("space-laundry|id|" + id huruf kecil) dan SHA-256("space-laundry|pin|" + pin)
     // ---------------------------------------------------------------------
-    const hasPin = () => { const a = store.get(KEY.auth, null); return !!(a && a.hash && a.salt); };
-    const hashPin = (pin, salt) => sha256Hex(`${salt}:${pin}:space-laundry`);
-    async function savePin(pin) {
-        const salt = randomHex(16);
-        const hash = await hashPin(pin, salt);
-        return store.set(KEY.auth, { v: 1, algo: 'SHA-256', salt, hash, createdAt: Date.now() });
+    const CRED_HASH = {
+        id: '7b331f43dbadff36f73b1833750284eb0e8ce03f5dbf2cbfed7054d20136b9dd',
+        pin: '48d3d038e5ce0d75d131163fb64c88d3a90dc5b5c21ec31cae2bd1112acfda27'
+    };
+    const hashLoginId = (id) => sha256Hex('space-laundry|id|' + String(id || '').trim().toLowerCase());
+    const hashLoginPin = (pin) => sha256Hex('space-laundry|pin|' + String(pin || ''));
+    async function checkLogin(id, pin) {
+        const [hi, hp] = await Promise.all([hashLoginId(id), hashLoginPin(pin)]);
+        return hi === CRED_HASH.id && hp === CRED_HASH.pin;
     }
-    async function checkPin(pin) {
-        const a = store.get(KEY.auth, null);
-        if (!a || !a.salt) return false;
-        return (await hashPin(pin, a.salt)) === a.hash;
-    }
+    // PIN lama (versi sebelumnya bisa buat PIN sendiri) diabaikan & dihapus; order tidak disentuh
+    function dropLegacyPin() { if (store.get(LEGACY_AUTH_KEY, null) !== null) store.del(LEGACY_AUTH_KEY); }
+
     // Batasi percobaan salah: setelah 5x salah, tunggu 30 detik (berlipat, maks 5 menit)
     function lockInfo() { const l = store.get(KEY.lock, { fails: 0, until: 0 }) || {}; return { fails: Number(l.fails) || 0, until: Number(l.until) || 0 }; }
     function registerFail() {
@@ -1007,73 +996,49 @@
         tick(); if (l.until > Date.now()) lockTimer = setInterval(tick, 1000);
     }
 
-    const PIN_RE = /^\d{4,6}$/;
-
     function showAuth() {
-        const setup = !hasPin();
-        $('#form-setup').classList.toggle('hidden', !setup);
-        $('#form-login').classList.toggle('hidden', setup);
-        $$('#page-auth input').forEach((i) => { i.value = ''; i.classList.remove('inp-error'); i.type = 'password'; });
+        dropLegacyPin();
+        $$('#page-auth input').forEach((i) => { i.value = ''; i.classList.remove('inp-error'); });
+        $$('#page-auth [data-pin-field]').forEach((i) => { i.type = 'password'; });
         $$('#page-auth [data-action="toggle-pin"] i').forEach((i) => { i.className = 'fas fa-eye'; });
         Mascot.setShy('auth', false);
         showPage('page-auth');
-        if (!setup) updateLockMsg();
+        updateLockMsg();
         // Fokus otomatis hanya di layar lebar (di iPhone keyboard tidak muncul tanpa sentuhan)
-        if (window.matchMedia('(min-width: 768px)').matches) setTimeout(() => { const f = $(setup ? '#setup-pin' : '#login-pin'); if (f) f.focus(); }, 80);
+        if (window.matchMedia('(min-width: 768px)').matches) setTimeout(() => { const f = $('#login-id'); if (f) f.focus(); }, 80);
     }
 
-    async function handleSetup(e) {
-        e.preventDefault();
-        const p1 = $('#setup-pin'), p2 = $('#setup-pin2');
-        [p1, p2].forEach((i) => i.classList.remove('inp-error'));
-        if (!PIN_RE.test(p1.value)) { p1.classList.add('inp-error'); Mascot.shake('auth'); return showToast('PIN harus 4–6 angka.', 'warning'); }
-        if (p1.value !== p2.value) { p2.classList.add('inp-error'); Mascot.shake('auth'); return showToast('Ulangi PIN tidak sama. Coba lagi.', 'warning'); }
-        if (!(await savePin(p1.value))) return;
-        store.del(KEY.lock);
-        session.set(SESSION_KEY, '1');
-        Mascot.setShy('auth', false); Mascot.cheer('auth');
-        showToast('PIN berhasil dibuat! Selamat datang Kapten.', 'success');
-        setTimeout(() => enterApp(), 350);
-    }
-
+    let loginBusy = false;
     async function handleLogin(e) {
         e.preventDefault();
-        const inp = $('#login-pin');
-        if (lockInfo().until > Date.now()) { updateLockMsg(); return; }
-        if (!inp.value) { inp.classList.add('inp-error'); return showToast('Masukkan PIN terlebih dahulu.', 'warning'); }
-        const ok = await checkPin(inp.value);
+        if (loginBusy) return;
+        const idEl = $('#login-id'), pinEl = $('#login-pin');
+        if (lockInfo().until > Date.now()) { updateLockMsg(); Mascot.shake('auth'); return; }
+        idEl.classList.toggle('inp-error', !idEl.value.trim());
+        pinEl.classList.toggle('inp-error', !pinEl.value);
+        if (!idEl.value.trim() || !pinEl.value) { Mascot.shake('auth'); return showToast('Masukkan ID dan PIN terlebih dahulu.', 'warning'); }
+        loginBusy = true;
+        let ok = false;
+        try { ok = await checkLogin(idEl.value, pinEl.value); } finally { loginBusy = false; }
         if (ok) {
             store.del(KEY.lock);
             session.set(SESSION_KEY, '1');
-            inp.value = ''; inp.blur();
+            idEl.value = ''; pinEl.value = ''; pinEl.blur(); idEl.blur();
             Mascot.setShy('auth', false); Mascot.cheer('auth');
             showToast('Login Berhasil! Selamat datang Kapten.', 'success');
             setTimeout(() => enterApp(), 350);
         } else {
             const l = registerFail();
-            inp.value = ''; inp.classList.add('inp-error');
+            pinEl.value = ''; pinEl.classList.add('inp-error'); idEl.classList.add('inp-error');
             Mascot.setShy('auth', false); Mascot.shake('auth');
-            showToast(l.fails >= 5 ? 'PIN salah. Login dikunci sementara.' : `PIN salah! (${l.fails}/5)`, 'error');
+            showToast(l.fails >= 5 ? 'ID atau PIN salah. Login dikunci sementara.' : `ID atau PIN salah. (${l.fails}/5)`, 'error');
             updateLockMsg();
         }
     }
 
-    // Reset PIN = hapus SEMUA data di perangkat ini (karena PIN tidak bisa dipulihkan)
-    async function forgotPin() {
-        const ok = await confirmDialog({
-            title: 'Reset PIN & Hapus Data', danger: true, confirmText: 'Hapus & Reset', requireText: 'HAPUS',
-            html: `PIN tidak bisa dipulihkan. Untuk membuat PIN baru, <b class="text-red-300">semua data di perangkat ini akan dihapus permanen</b>:
-                <ul class="list-disc ml-5 mt-2 text-gray-300"><li>PIN</li><li>Semua order &amp; riwayat</li><li>Harga layanan &amp; pengaturan</li></ul>
-                <p class="mt-2 text-gray-400 text-xs">Jika punya file backup (.json), Anda bisa mengimpornya lagi setelah membuat PIN baru.</p>`
-        });
-        if (!ok) return;
-        clearAllData();
-        showToast('Data dihapus. Silakan buat PIN baru.', 'success');
-        showAuth();
-    }
-
     function clearAllData() {
-        Object.values(KEY).forEach((k) => store.del(k));
+        Object.values(KEY).forEach((k) => store.del(k)); // order, harga, pengaturan, nomor nota, keranjang
+        store.del(LEGACY_AUTH_KEY);
         session.del(SESSION_KEY);
         state.orders = []; state.prices = {}; state.settings = { ...DEFAULT_SETTINGS }; state.seq = {}; state.cart = [];
         applyPaperStyle();
@@ -1092,8 +1057,14 @@
             if (a && a.hasAttribute && a.hasAttribute('data-pin-field')) {
                 Mascot.lookAt('auth', a);
                 Mascot.setShy('auth', a.value.length > 0, a.type === 'text');
-            } else { Mascot.lookAt('auth', null); Mascot.setShy('auth', false); }
+            } else if (a && a.hasAttribute && a.hasAttribute('data-look-field')) { Mascot.lookAt('auth', a); Mascot.setShy('auth', false); }
+            else { Mascot.lookAt('auth', null); Mascot.setShy('auth', false); }
         };
+        $$('[data-look-field]').forEach((el) => {
+            el.addEventListener('focus', refreshShy);
+            el.addEventListener('blur', () => setTimeout(refreshShy, 30));
+            el.addEventListener('input', () => { el.classList.remove('inp-error'); refreshShy(); });
+        });
         $$('[data-pin-field]').forEach((el) => {
             el.addEventListener('focus', refreshShy);
             el.addEventListener('blur', () => setTimeout(refreshShy, 30));
@@ -2510,17 +2481,14 @@
 
                     <div class="card">
                         <h4 class="font-bold text-white mb-3"><i class="fas fa-shield-alt text-cyan-400 mr-1"></i> Keamanan</h4>
-                        <div class="grid grid-cols-2 gap-2">
-                            <button type="button" class="btn-soft text-sm" data-action="change-pin"><i class="fas fa-key"></i> Ganti PIN</button>
-                            <button type="button" class="btn-soft text-sm" data-action="lock"><i class="fas fa-lock"></i> Kunci Sekarang</button>
-                        </div>
-                        <p class="hint mt-3">PIN disimpan sebagai hash SHA-256 di perangkat ini. Ini pengaman lokal, bukan keamanan server.</p>
+                        <button type="button" class="btn-soft text-sm w-full" data-action="lock"><i class="fas fa-lock"></i> Kunci Sekarang</button>
+                        <p class="hint mt-3">Kunci aplikasi saat tidak dipakai. Untuk membuka lagi, login dengan ID &amp; PIN operator.</p>
                     </div>
 
                     <div class="card border-red-500/40">
                         <h4 class="font-bold text-red-300 mb-1"><i class="fas fa-exclamation-triangle mr-1"></i> Zona Bahaya</h4>
-                        <p class="text-xs text-gray-400 mb-3">Menghapus PIN, semua order, harga, dan pengaturan di perangkat ini. Export backup dulu!</p>
-                        <button type="button" class="btn-red w-full text-sm" data-action="wipe"><i class="fas fa-trash"></i> Reset PIN &amp; Hapus Semua Data</button>
+                        <p class="text-xs text-gray-400 mb-3">Menghapus semua order, harga, dan pengaturan di perangkat ini lalu kembali ke halaman login. Export backup dulu!</p>
+                        <button type="button" class="btn-red w-full text-sm" data-action="wipe"><i class="fas fa-trash"></i> Reset &amp; Hapus Semua Data</button>
                     </div>
                 </div>
             </div>
@@ -2552,33 +2520,14 @@
         renderPengaturan();
     }
 
-    function openChangePin() {
-        const m = openModal({
-            title: 'Ganti PIN', icon: 'fa-key', size: 'sm',
-            body: `<div class="space-y-3">
-                <div><label class="lbl" for="cp-old">PIN Lama</label><input id="cp-old" type="password" class="inp pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off"></div>
-                <div><label class="lbl" for="cp-new">PIN Baru (4–6 angka)</label><input id="cp-new" type="password" class="inp pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off"></div>
-                <div><label class="lbl" for="cp-new2">Ulangi PIN Baru</label><input id="cp-new2" type="password" class="inp pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off"></div></div>`,
-            footer: `<div class="flex gap-2"><button type="button" class="btn-ghost flex-1" data-modal-close>Batal</button><button type="button" class="btn-cyan flex-[2]" id="cp-ok">Simpan PIN</button></div>`
-        });
-        $$('input', m.el).forEach((i) => i.addEventListener('input', () => { i.value = i.value.replace(/\D/g, '').slice(0, 6); i.classList.remove('inp-error'); }));
-        $('#cp-ok', m.el).addEventListener('click', async () => {
-            const o = $('#cp-old', m.el), n = $('#cp-new', m.el), n2 = $('#cp-new2', m.el);
-            if (!(await checkPin(o.value))) { o.classList.add('inp-error'); return showToast('PIN lama salah.', 'error'); }
-            if (!PIN_RE.test(n.value)) { n.classList.add('inp-error'); return showToast('PIN baru harus 4–6 angka.', 'warning'); }
-            if (n.value !== n2.value) { n2.classList.add('inp-error'); return showToast('Ulangi PIN baru tidak sama.', 'warning'); }
-            if (await savePin(n.value)) { showToast('PIN berhasil diganti.', 'success'); m.close('ok'); }
-        });
-    }
-
     async function wipeAll() {
         const ok = await confirmDialog({
             title: 'Hapus Semua Data?', danger: true, requireText: 'HAPUS', confirmText: 'Hapus Semua',
-            html: `<b class="text-red-300">PIN, ${state.orders.length} order, harga, dan pengaturan</b> di perangkat ini akan dihapus permanen. Pastikan sudah Export backup.`
+            html: `<b class="text-red-300">${state.orders.length} order, harga, dan pengaturan</b> di perangkat ini akan dihapus permanen. Pastikan sudah Export backup.<br><span class="text-xs text-gray-400">Login ID &amp; PIN tetap sama.</span>`
         });
         if (!ok) return;
         clearAllData();
-        showToast('Semua data dihapus. Silakan buat PIN baru.', 'success');
+        showToast('Semua data dihapus. Silakan login kembali.', 'success');
         showAuth();
     }
 
@@ -2608,7 +2557,7 @@
         const mode = await choiceDialog({
             title: 'Import Backup', icon: 'fa-file-import',
             html: `File berisi <b>${orders.length} order</b>${data.exportedAt ? ` (dibuat ${fmtDateTime(data.exportedAt)})` : ''}.<br>Data saat ini: <b>${state.orders.length} order</b>.
-                <p class="mt-2 text-xs text-gray-400"><b>Gabungkan</b>: tambahkan order dari file (nota yang sama diperbarui dari file).<br><b>Ganti semua</b>: hapus order, harga &amp; pengaturan saat ini lalu pakai isi file. PIN tidak berubah.</p>`,
+                <p class="mt-2 text-xs text-gray-400"><b>Gabungkan</b>: tambahkan order dari file (nota yang sama diperbarui dari file).<br><b>Ganti semua</b>: hapus order, harga &amp; pengaturan saat ini lalu pakai isi file. Login ID &amp; PIN tidak berubah.</p>`,
             choices: [{ value: 'merge', label: 'Gabungkan', cls: 'btn-cyan', icon: 'fa-object-group' },
                       { value: 'replace', label: 'Ganti Semua Data', cls: 'btn-red', icon: 'fa-exchange-alt' }]
         });
@@ -2636,7 +2585,6 @@
     const ACTIONS = {
         'start': () => showAuth(),
         'go-landing': () => showPage('page-landing'),
-        'forgot-pin': () => forgotPin(),
         'toggle-pin': (b) => {
             const inp = $('#' + b.dataset.target); if (!inp) return;
             inp.type = inp.type === 'password' ? 'text' : 'password';
@@ -2680,7 +2628,6 @@
         'set-paper': (b) => { state.settings.paper = b.dataset.paper; saveSettings(); applyPaperStyle(); renderPengaturan(); showToast(`Ukuran kertas: ${b.dataset.paper} mm`, 'success', 1800); },
         'export': () => exportData(),
         'import': () => { const f = $('#import-file'); f.value = ''; f.click(); },
-        'change-pin': () => openChangePin(),
         'wipe': () => wipeAll()
     };
 
@@ -2708,7 +2655,6 @@
             }
         });
         document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.matches && e.target.matches('[data-qty-input]')) { e.preventDefault(); e.target.blur(); } });
-        $('#form-setup').addEventListener('submit', handleSetup);
         $('#form-login').addEventListener('submit', handleLogin);
         let st = 0;
         $('#search-order').addEventListener('input', (e) => { clearTimeout(st); st = setTimeout(() => { state.search = e.target.value; state.limit = 30; renderRiwayat(); }, 150); });
@@ -2720,7 +2666,8 @@
         // Perbarui badge "lewat estimasi" & laporan secara berkala
         setInterval(() => { if (!document.hidden && !modalStack.length && (state.view === 'riwayat' || state.view === 'laporan') && !$('#page-app').classList.contains('hidden')) renderView(); }, 60000);
 
-        if (hasPin() && session.get(SESSION_KEY) === '1') enterApp();
+        dropLegacyPin();
+        if (session.get(SESSION_KEY) === '1') enterApp();
         else showPage('page-landing');
     }
     init();
