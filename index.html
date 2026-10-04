@@ -1095,9 +1095,33 @@
         renderNavBadges();
         showView(session.get('sl_view') || 'kasir');
     }
-    const VIEWS = { kasir: () => renderKasir(), riwayat: () => renderRiwayat(), laporan: () => renderLaporan(), pengaturan: () => renderPengaturan() };
+    const VIEWS = { kasir: () => renderKasir(), riwayat: () => renderRiwayat(), laporan: () => { renderLaporan(); Clock.start(); }, pengaturan: () => renderPengaturan() };
+
+    // Jam berjalan (HH:MM:SS) di bawah tanggal. Satu timer saja; berhenti sendiri bila tidak ada jam di layar.
+    const fmtClock = (d) => `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+    const liveClockHTML = () => { const d = new Date(); return `<div class="text-right leading-tight shrink-0" data-live-clock>
+        <div class="text-xs text-gray-400" data-clock-date>${fmtLongDate(d)}</div>
+        <div class="font-mono tabular-nums text-cyan-300 font-semibold text-base sm:text-lg tracking-wide mt-0.5" data-clock-time aria-label="Jam sekarang">${fmtClock(d)}</div></div>`; };
+    const Clock = (() => {
+        let timer = 0;
+        const stop = () => { clearTimeout(timer); timer = 0; };
+        const visible = () => $$('[data-clock-time]').filter((el) => el.offsetParent !== null);
+        function tick(now = new Date()) {
+            const els = visible();
+            if (!els.length) { stop(); return false; }
+            const t = fmtClock(now), dt = fmtLongDate(now);
+            els.forEach((el) => { if (el.textContent !== t) el.textContent = t; });
+            $$('[data-clock-date]').forEach((el) => { if (el.textContent !== dt) el.textContent = dt; }); // ganti tanggal saat lewat tengah malam
+            return true;
+        }
+        function loop() { if (!tick()) return; timer = setTimeout(loop, 1000 - (Date.now() % 1000) + 15); } // selaras dengan pergantian detik
+        function start() { stop(); loop(); }
+        document.addEventListener('visibilitychange', () => { if (!document.hidden && $$('[data-clock-time]').length) start(); });
+        return { start, stop, tick, active: () => timer !== 0 };
+    })();
     function showView(name) {
         if (!VIEWS[name]) name = 'kasir';
+        Clock.stop(); // hentikan jam view sebelumnya (dimulai lagi oleh view yang memakai jam)
         state.view = name; session.set('sl_view', name);
         $$('.view').forEach((v) => v.classList.add('hidden'));
         const v = $('#view-' + name);
@@ -2353,7 +2377,7 @@
 
         $('#view-laporan').innerHTML = `
             <div class="flex items-center justify-between mb-3"><h3 class="section-title"><i class="fas fa-chart-pie text-cyan-400"></i> Laporan</h3>
-                <span class="text-xs text-gray-400">${fmtLongDate(new Date())}</span></div>
+                ${liveClockHTML()}</div>
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4" id="report-tiles">
                 <div data-report="rev-today">${tile('Pendapatan Hari Ini', formatRp(st.revToday), 'Order lunas hari ini', 'fa-coins', 'text-emerald-400')}</div>
                 <div data-report="rev-month">${tile('Pendapatan Bulan Ini', formatRp(st.revMonth), BULAN[new Date().getMonth()] + ' ' + new Date().getFullYear(), 'fa-calendar-alt', 'text-cyan-400')}</div>
