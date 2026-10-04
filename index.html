@@ -1101,7 +1101,7 @@
     const fmtClock = (d) => `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
     const liveClockHTML = () => { const d = new Date(); return `<div class="text-right leading-tight shrink-0" data-live-clock>
         <div class="text-xs text-gray-400" data-clock-date>${fmtLongDate(d)}</div>
-        <div class="font-mono tabular-nums text-cyan-300 font-semibold text-base sm:text-lg tracking-wide mt-0.5" data-clock-time aria-label="Jam sekarang">${fmtClock(d)}</div></div>`; };
+        <div class="text-xs tabular-nums text-cyan-300 mt-0.5" style="font-variant-numeric: tabular-nums" data-clock-time aria-label="Jam sekarang">${fmtClock(d)}</div></div>`; };
     const Clock = (() => {
         let timer = 0;
         const stop = () => { clearTimeout(timer); timer = 0; };
