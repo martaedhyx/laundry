@@ -30,6 +30,7 @@
             .btn-indigo { @apply btn bg-indigo-600 hover:bg-indigo-500 text-white; }
             .btn-green { @apply btn bg-green-600 hover:bg-green-500 text-white; }
             .btn-wa { @apply btn bg-[#25D366] hover:bg-[#1ebe5b] text-gray-900; }
+            .btn-wa-img { @apply btn bg-teal-400 hover:bg-teal-300 text-gray-900; }
             .btn-red { @apply btn bg-red-600 hover:bg-red-500 text-white; }
             .btn-ghost { @apply btn border border-gray-600 text-gray-300 hover:text-white hover:border-gray-400 bg-transparent; }
             .btn-soft { @apply btn bg-gray-800/80 border border-gray-700 text-gray-200 hover:border-cyan-500 hover:text-white; }
@@ -141,13 +142,12 @@
         @keyframes mFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
         .mascot-shadow { height: 10px; margin: 8px auto 0; border-radius: 50%; background: rgba(34,211,238,.35); filter: blur(6px); animation: mShadow 4.2s ease-in-out infinite; }
         @keyframes mShadow { 0%,100% { transform: scaleX(1); opacity: .65; } 50% { transform: scaleX(.72); opacity: .35; } }
-        /* Lencana terang + cincin cyan supaya bola hitam tetap terlihat di latar gelap */
+        /* Bola hitam tanpa cincin/lencana putih: hanya bayangan lembut supaya tetap terlihat di latar gelap */
         .mascot-badge {
-            width: 100%; height: 100%; border-radius: 9999px; padding: 9%;
-            background: radial-gradient(circle at 35% 28%, #ffffff 0%, #eefaff 45%, #c9eef8 100%);
-            box-shadow: 0 0 0 3px rgba(34,211,238,.6), 0 0 24px rgba(34,211,238,.45), 0 0 60px rgba(59,130,246,.25);
+            width: 100%; height: 100%; border-radius: 9999px; padding: 0; background: transparent;
+            filter: drop-shadow(0 6px 14px rgba(0,0,0,.55)) drop-shadow(0 0 12px rgba(34,211,238,.22));
         }
-        .mascot-sm .mascot-badge { padding: 8%; box-shadow: 0 0 0 2px rgba(34,211,238,.6), 0 0 12px rgba(34,211,238,.45); }
+        .mascot-sm .mascot-badge { filter: drop-shadow(0 2px 4px rgba(0,0,0,.5)) drop-shadow(0 0 5px rgba(34,211,238,.25)); }
         .mascot-badge.bounce { animation: mBounce .55s cubic-bezier(.3,1.5,.5,1); }
         @keyframes mBounce { 0% { transform: scale(1); } 30% { transform: scale(1.1,.9); } 60% { transform: scale(.95,1.06); } 100% { transform: scale(1); } }
         .mascot svg { display: block; width: 100%; height: 100%; overflow: visible; }
@@ -1541,7 +1541,7 @@
         ${justCreated ? `<div class="text-center mb-4 fade-in">
             <div class="text-5xl text-green-400 mb-2"><i class="fas fa-check-circle"></i></div>
             <h3 class="text-2xl font-bold text-white">Order Berhasil!</h3>
-            <p class="text-gray-300 text-sm">Nota siap dicetak atau dikirim ke WhatsApp pelanggan.</p></div>` : ''}
+            <p class="text-gray-300 text-sm">Nota siap dicetak atau dikirim ke WhatsApp pelanggan (teks / gambar).</p></div>` : ''}
         <div class="${box} mb-3">
             <div class="flex justify-between gap-3">
                 <div class="min-w-0"><div class="${cap}">No. Nota</div><div class="font-mono font-bold text-cyan-300 break-all" data-od-nota>${esc(o.id)}</div></div>
@@ -1598,6 +1598,7 @@
             <button type="button" data-od="print" class="btn-blue ${BT_SUPPORTED ? '' : 'col-span-2'}"><i class="fas fa-print"></i> Cetak Nota</button>
             ${BT_SUPPORTED ? '<button type="button" data-od="bt" class="btn-indigo"><i class="fab fa-bluetooth-b"></i> Print Bluetooth</button>' : ''}
             <button type="button" data-od="wa-nota" class="btn-wa col-span-2"><i class="fab fa-whatsapp text-lg"></i> Kirim Nota ke WhatsApp</button>
+            <button type="button" data-od="wa-img" class="btn-wa-img col-span-2"><i class="fas fa-file-image text-lg"></i> Kirim Nota Gambar <i class="fab fa-whatsapp opacity-80"></i></button>
             ${o.status === 'selesai' ? '<button type="button" data-od="wa-selesai" class="btn-wa col-span-2 !bg-emerald-400"><i class="fas fa-bell"></i> Kabari: Cucian Selesai, Silakan Diambil</button>' : ''}
         </div>
         ${BT_SUPPORTED ? '' : btInfoHTML()}
@@ -1618,7 +1619,7 @@
             title: justCreated ? 'Order Tersimpan' : 'Detail Order', icon: 'fa-receipt', size: 'lg', id: 'detail-modal',
             footer: `<button type="button" class="btn-ghost w-full" data-modal-close>${justCreated ? '<i class="fas fa-plus"></i> Buat Order Baru' : 'Tutup'}</button>`
         });
-        const render = () => { const o = findOrder(id); if (!o) return m.close(); m.body().innerHTML = orderDetailHTML(o, fresh); };
+        const render = () => { const o = findOrder(id); if (!o) return m.close(); m.body().innerHTML = orderDetailHTML(o, fresh); prepareReceiptImage(id); };
         m.el.addEventListener('click', async (e) => {
             const b = e.target.closest('[data-od]'); if (!b) return;
             const o = findOrder(id); if (!o) return;
@@ -1629,6 +1630,7 @@
                 case 'unpay': if (await unpayOrder(o)) render(); break;
                 case 'print': printOrder(o); break;
                 case 'bt': printBluetooth(o); break;
+                case 'wa-img': shareReceiptImage(o); break; // sinkron: share() harus di dalam gesture (iPhone)
                 case 'wa-nota': await sendWA(o, 'nota'); render(); break;
                 case 'wa-selesai': await sendWA(o, 'selesai'); render(); break;
                 case 'delete': if (await deleteOrder(o)) m.close('deleted'); break;
@@ -1874,6 +1876,225 @@
     const printOrder = (o) => printHTML(buildReceiptHTML(o));
 
     // ---------------------------------------------------------------------
+    // 15b. NOTA GAMBAR (PNG digambar langsung di <canvas>, tanpa library)
+    //      -> dibagikan lewat menu Share (iPhone: pilih WhatsApp)
+    // ---------------------------------------------------------------------
+    const RC = { W: 384, PAD: 18, FONT: "'Courier New', Courier, 'Liberation Mono', Menlo, monospace" };
+    const RC_PX = { base: 16, small: 13, foot: 14, tiny: 13, title: 22, total: 19 };
+    const rcFont = (px, bold) => `${bold ? 'bold ' : ''}${px}px ${RC.FONT}`;
+    const rcLH = (px) => Math.round(px * 1.42);
+
+    // Logo bola hitam (sama dengan receiptLogo SVG, koordinat viewBox 100x100)
+    function drawReceiptLogo(ctx, x, y, size) {
+        const s = size / 100;
+        ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+        ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(50, 50, 49, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fff';
+        const pill = (cx, cy, w, h) => {
+            const r = w / 2, hh = h / 2 - r;
+            ctx.save(); ctx.translate(cx, cy); ctx.rotate(-25 * Math.PI / 180);
+            ctx.beginPath(); ctx.arc(0, -hh, r, Math.PI, 0); ctx.arc(0, hh, r, 0, Math.PI); ctx.closePath(); ctx.fill();
+            ctx.restore();
+        };
+        pill(60, 30.5, 10, 19); pill(80, 26.5, 8.5, 18);
+        ctx.restore();
+    }
+
+    // Susun isi nota (sama dengan buildReceiptHTML) menjadi daftar perintah gambar + tinggi total
+    function layoutReceiptImage(o, W = RC.W) {
+        const m = document.createElement('canvas').getContext('2d');
+        const P = RC.PAD, CW = W - P * 2, ops = [];
+        let y = P;
+        const measure = (t, font) => { m.font = font; return m.measureText(t).width; };
+        // Bungkus teks per kata; kata yang terlalu panjang dipotong per huruf
+        const wrap = (text, font, maxW) => {
+            m.font = font; const out = [];
+            String(text == null ? '' : text).split(/\r?\n/).forEach((par) => {
+                let cur = '';
+                par.split(/\s+/).filter(Boolean).forEach((w) => {
+                    const cand = cur ? cur + ' ' + w : w;
+                    if (m.measureText(cand).width <= maxW) { cur = cand; return; }
+                    if (cur) out.push(cur);
+                    while (w.length > 1 && m.measureText(w).width > maxW) {
+                        let k = w.length - 1;
+                        while (k > 1 && m.measureText(w.slice(0, k)).width > maxW) k--;
+                        out.push(w.slice(0, k)); w = w.slice(k);
+                    }
+                    cur = w;
+                });
+                out.push(cur);
+            });
+            return out;
+        };
+        const put = (text, x, cy, font, align = 'left') => ops.push({ t: 'text', text, x, y: cy, font, align, w: measure(text, font) });
+        const para = (text, px, { bold = false, align = 'left', indent = 0 } = {}) => {
+            const font = rcFont(px, bold), lh = rcLH(px);
+            wrap(text, font, CW - indent).forEach((s) => {
+                put(s, align === 'center' ? W / 2 : align === 'right' ? W - P : P + indent, y + lh / 2, font, align);
+                y += lh;
+            });
+        };
+        const dash = () => { y += 4; ops.push({ t: 'dash', y: Math.round(y) + 0.5, x1: P, x2: W - P }); y += 7; };
+        // Baris kiri-kanan (label kiri bisa terbungkus, nilai kanan rata kanan di baris pertama)
+        const lr = (l, r, { px = RC_PX.base, bold = false, boldR = false, indent = 0 } = {}) => {
+            const fl = rcFont(px, bold), fr = rcFont(px, bold || boldR), lh = rcLH(px);
+            const rw = measure(r, fr);
+            if (rw > CW - 40) { para(l, px, { bold, indent }); return para(r, px, { bold: bold || boldR, align: 'right' }); }
+            put(r, W - P, y + lh / 2, fr, 'right');
+            wrap(l, fl, CW - indent - rw - 10).forEach((s) => { put(s, P + indent, y + lh / 2, fl); y += lh; });
+        };
+        // Baris info "Label : nilai" (kolom titik dua sejajar, nilai terbungkus)
+        const fB = rcFont(RC_PX.base), colon = P + measure('Selesai', fB) + 5, vx = colon + measure(': ', fB);
+        const info = (label, value, bold) => {
+            const fv = rcFont(RC_PX.base, bold), lh = rcLH(RC_PX.base);
+            put(label, P, y + lh / 2, fB); put(':', colon, y + lh / 2, fB);
+            wrap(value, fv, W - P - vx).forEach((s) => { put(s, vx, y + lh / 2, fv); y += lh; });
+        };
+
+        // Kepala: logo + SPACE LAUNDRY
+        const logo = 58, gap = 12, fT = rcFont(RC_PX.title, true);
+        const tw = Math.min(measure(TOKO.nama, fT), CW - logo - gap);
+        const gx = Math.round((W - (logo + gap + tw)) / 2);
+        ops.push({ t: 'logo', x: gx, y, size: logo });
+        put(TOKO.nama, gx + logo + gap, y + logo / 2 + 1, fT);
+        y += logo + 8;
+        para(TOKO.alamat1, RC_PX.small, { align: 'center' });
+        para(`${TOKO.alamat2} | Telp: ${TOKO.telp}`, RC_PX.small, { align: 'center' });
+        para(`Owner: ${TOKO.owner}`, RC_PX.small, { align: 'center' });
+        y += 4; dash();
+
+        const est = parseLocalDT(o.estimasi);
+        info('Nota', o.id, true);
+        info('Tgl', fmtDateTime(o.createdAt));
+        info('Plg', o.customer.name);
+        if (o.customer.wa) info('WA', fmtWA(o.customer.wa));
+        if (est) info('Selesai', fmtDateTime(est));
+        dash();
+
+        o.items.forEach((i) => {
+            para(i.name, RC_PX.base);
+            lr(`${fmtQty(i.qty, i.unit)} x ${fmtNum(i.price)}`, fmtNum(i.subtotal), { indent: measure('  ', fB) });
+            y += 3;
+        });
+        dash();
+
+        if (o.discount.amount || o.extra.amount) lr('Subtotal', formatRp(o.subtotal));
+        if (o.discount.amount) lr(`Diskon${o.discount.type === 'pct' ? ' ' + fmtNum(o.discount.value) + '%' : ''}`, '-' + formatRp(o.discount.amount));
+        if (o.extra.amount) lr(o.extra.label || 'Biaya tambahan', '+' + formatRp(o.extra.amount));
+        y += 3; lr('TOTAL', formatRp(o.total), { px: RC_PX.total, bold: true }); y += 4;
+        if (o.payment.status === 'lunas') {
+            lr('Bayar', `LUNAS (${METODE[o.payment.method].label})`);
+            if (o.payment.method === 'tunai' && o.payment.paid) { lr('Tunai', formatRp(o.payment.paid)); lr('Kembali', formatRp(o.payment.change)); }
+        } else lr('Bayar', 'BELUM BAYAR', { boldR: true });
+        lr('Status', STATUS[o.status].label);
+        if (o.note) { dash(); para(`Catatan: ${o.note}`, RC_PX.base); }
+        dash();
+
+        y += 6;
+        para('*** Terima Kasih ***', RC_PX.foot, { align: 'center' });
+        para(TOKO.slogan, RC_PX.foot, { align: 'center' });
+        y += 3;
+        para('Simpan nota ini untuk pengambilan', RC_PX.tiny, { align: 'center' });
+        y += P;
+        return { ops, width: W, height: Math.ceil(y) };
+    }
+
+    // Gambar nota ke canvas (sinkron). Skala 3x supaya teks tajam; diturunkan bila terlalu besar (batas canvas iPhone)
+    function renderReceiptCanvas(o, { scale = 3, width = RC.W } = {}) {
+        const L = layoutReceiptImage(o, width);
+        let s = scale;
+        while (s > 1 && width * s * L.height * s > 16e6) s -= 0.5;
+        const c = document.createElement('canvas');
+        c.width = Math.round(width * s); c.height = Math.round(L.height * s);
+        const ctx = c.getContext('2d');
+        ctx.scale(s, s);
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, width, L.height);
+        ctx.textBaseline = 'middle';
+        L.ops.forEach((op) => {
+            if (op.t === 'text') { ctx.fillStyle = '#000'; ctx.font = op.font; ctx.textAlign = op.align; ctx.fillText(op.text, op.x, op.y); }
+            else if (op.t === 'dash') {
+                ctx.save(); ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.setLineDash([4, 3]);
+                ctx.beginPath(); ctx.moveTo(op.x1, op.y); ctx.lineTo(op.x2, op.y); ctx.stroke(); ctx.restore();
+            } else if (op.t === 'logo') drawReceiptLogo(ctx, op.x, op.y, op.size);
+        });
+        return { canvas: c, scale: s, width, height: L.height, ops: L.ops };
+    }
+
+    // dataURL -> Blob secara sinkron (canvas.toBlob async bisa menghilangkan "user gesture" di iPhone)
+    function dataUrlToBlob(url) {
+        const i = url.indexOf(','), head = url.slice(0, i);
+        const mime = (/^data:([^;,]+)/.exec(head) || [])[1] || 'image/png';
+        const bin = atob(url.slice(i + 1)), u8 = new Uint8Array(bin.length);
+        for (let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k);
+        return new Blob([u8], { type: mime });
+    }
+    const receiptFileName = (o) => `nota-${String(o.id).replace(/[^\w.-]+/g, '_')}.png`;
+    const receiptShareText = (o) => `Nota laundry Anda dari Space Laundry (${o.id}). Terima kasih!`;
+
+    // Cache 1 gambar terakhir: dibuat di latar saat detail order dibuka, dipakai saat tombol diketuk
+    const receiptImgCache = { key: '', file: null };
+    function receiptImageFile(o) {
+        const key = JSON.stringify(o);
+        if (receiptImgCache.key === key && receiptImgCache.file) return receiptImgCache.file;
+        const r = renderReceiptCanvas(o);
+        const blob = dataUrlToBlob(r.canvas.toDataURL('image/png'));
+        r.canvas.width = r.canvas.height = 0; // bebaskan memori canvas (penting di iPhone)
+        let file;
+        try { file = new File([blob], receiptFileName(o), { type: 'image/png', lastModified: Date.now() }); }
+        catch (e) { file = blob; try { file.name = receiptFileName(o); } catch (e2) { /* abaikan */ } }
+        receiptImgCache.key = key; receiptImgCache.file = file;
+        return file;
+    }
+    function prepareReceiptImage(id) {
+        setTimeout(() => { const o = findOrder(id); if (o) { try { receiptImageFile(o); } catch (e) { /* dibuat ulang saat diketuk */ } } }, 150);
+    }
+
+    function downloadBlobUrl(url, name) {
+        const a = document.createElement('a');
+        a.href = url; a.download = name; a.rel = 'noopener';
+        document.body.appendChild(a); a.click(); a.remove();
+    }
+
+    // PENTING (iPhone/Safari): navigator.share harus dipanggil langsung di dalam handler klik,
+    // jadi fungsi ini sinkron sampai share() dipanggil (tidak ada await sebelumnya).
+    function shareReceiptImage(o) {
+        let file;
+        try { file = receiptImageFile(o); } catch (e) { return showToast('Gagal membuat gambar nota.', 'error'); }
+        let can = false;
+        try { can = !!(navigator.share && navigator.canShare && navigator.canShare({ files: [file] })); } catch (e) { can = false; }
+        if (!can) return receiptImageFallback(o, file, { auto: true });
+        let p;
+        try { p = navigator.share({ files: [file], title: `Nota ${o.id}`, text: receiptShareText(o) }); }
+        catch (e) { return receiptImageFallback(o, file, { auto: false }); }
+        Promise.resolve(p).then(() => showToast('Nota gambar siap dikirim.', 'success', 2000)).catch((err) => {
+            if (err && err.name === 'AbortError') return; // dibatalkan pengguna: diam saja
+            receiptImageFallback(o, file, { auto: false });
+        });
+    }
+
+    // Cadangan bila browser tidak bisa share file: unduh PNG + tawarkan buka WhatsApp pelanggan
+    function receiptImageFallback(o, file, { auto }) {
+        const name = receiptFileName(o), url = URL.createObjectURL(file);
+        if (auto) { downloadBlobUrl(url, name); window.__lastReceiptDownload = name; }
+        showToast(auto ? `Gambar nota diunduh (${name}). Lampirkan gambar ini di chat WhatsApp pelanggan.` : 'Menu bagikan tidak bisa dibuka. Unduh / simpan gambar lalu lampirkan di WhatsApp.', 'info', 5000);
+        const msg = `Halo Kak ${o.customer.name}, berikut nota laundry Anda dari Space Laundry (No. ${o.id}), total ${formatRp(o.total)}. Terima kasih!`;
+        const waUrl = o.customer.wa ? waLink(o.customer.wa, msg) : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+        const m = openModal({
+            title: 'Nota Gambar', icon: 'fa-file-image', size: 'sm', id: 'nota-img-modal',
+            body: `<p class="text-sm text-gray-300 mb-3">${auto ? 'Browser ini belum bisa membagikan gambar langsung. Gambar nota sudah <b>diunduh</b>.' : 'Gambar nota siap.'} Buka WhatsApp${o.customer.wa ? ` <b>${esc(fmtWA(o.customer.wa))}</b>` : ''}, lalu lampirkan gambar ini.</p>
+                <img src="${url}" alt="Nota ${esc(o.id)}" class="block w-full max-w-[240px] mx-auto rounded-lg border border-gray-600 bg-white" data-nota-img>
+                <p class="hint text-center mt-2">iPhone: tekan lama gambar &rarr; <b>Simpan ke Foto</b> atau <b>Salin</b>, lalu tempel di WhatsApp.</p>`,
+            footer: `<div class="grid grid-cols-2 gap-2">
+                <a href="${url}" download="${esc(name)}" class="btn-soft text-sm" data-nota-dl><i class="fas fa-download"></i> ${auto ? 'Unduh Lagi' : 'Unduh Gambar'}</a>
+                <button type="button" class="btn-wa text-sm" data-nota-wa><i class="fab fa-whatsapp"></i> Buka WhatsApp</button>
+                <button type="button" class="btn-ghost col-span-2" data-modal-close>Tutup</button></div>`,
+            onClose: () => setTimeout(() => URL.revokeObjectURL(url), 1500)
+        });
+        $('[data-nota-wa]', m.el).addEventListener('click', () => { window.__lastWaUrl = waUrl; openExternal(waUrl); });
+        return m;
+    }
+
+    // ---------------------------------------------------------------------
     // 16. PRINT BLUETOOTH (Web Bluetooth + ESC/POS) — hanya Chrome Android/desktop
     // ---------------------------------------------------------------------
     const BT_SERVICES = ['000018f0-0000-1000-8000-00805f9b34fb', 'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
@@ -2019,6 +2240,7 @@
                 ${st.next ? `<button type="button" data-action="order-next" data-id="${esc(o.id)}" class="btn-soft text-xs py-2 px-2 flex-1"><i class="fas fa-arrow-right"></i> ${st.nextLabel}</button>` : '<span class="flex-1 text-xs text-gray-500 self-center"><i class="fas fa-check-double mr-1"></i>Selesai semua</span>'}
                 ${unpaid ? `<button type="button" data-action="order-pay" data-id="${esc(o.id)}" class="btn-soft text-xs py-2 px-2 flex-1 !text-emerald-300"><i class="fas fa-money-bill-wave"></i> Lunas</button>` : ''}
                 <button type="button" data-action="order-wa" data-id="${esc(o.id)}" class="btn-soft text-sm py-2 px-3 !text-[#25D366]" title="${o.status === 'selesai' ? 'Kabari cucian selesai' : 'Kirim nota'} via WhatsApp" aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></button>
+                <button type="button" data-action="order-img" data-id="${esc(o.id)}" class="btn-soft text-sm py-2 px-3 !text-teal-300" title="Kirim Nota Gambar" aria-label="Kirim Nota Gambar"><i class="fas fa-file-image"></i></button>
                 <button type="button" data-action="order-print" data-id="${esc(o.id)}" class="btn-soft text-sm py-2 px-3" title="Cetak nota" aria-label="Cetak nota"><i class="fas fa-print"></i></button>
             </div>
         </div>`;
@@ -2437,6 +2659,7 @@
         'order-next': (b) => { const o = findOrder(b.dataset.id); if (o && STATUS[o.status].next) changeStatus(o, STATUS[o.status].next); },
         'order-pay': (b) => { const o = findOrder(b.dataset.id); if (o) openPayModal(o); },
         'order-wa': (b) => { const o = findOrder(b.dataset.id); if (o) sendWA(o, o.status === 'selesai' ? 'selesai' : 'nota'); },
+        'order-img': (b) => { const o = findOrder(b.dataset.id); if (o) shareReceiptImage(o); },
         'order-print': (b) => { const o = findOrder(b.dataset.id); if (o) printOrder(o); },
         'report-day': (b) => {
             const d = addDays(parseIsoDay(state.reportDay) || new Date(), Number(b.dataset.delta));
