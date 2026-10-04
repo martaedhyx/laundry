@@ -385,16 +385,22 @@
     };
 
     // Daftar layanan & harga bawaan (sama seperti versi asli). Harga bisa diubah di Pengaturan.
+    // color = warna ikon tiap layanan (tetap, satu warna berbeda per layanan)
     const DEFAULT_SERVICES = [
-        { id: 'ck',       name: 'Cuci Kering (CK)',          price: 4000,  unit: 'kg',     icon: 'fa-tshirt' },
-        { id: 'cks',      name: 'Cuci Kering Setrika (CKS)', price: 6000,  unit: 'kg',     icon: 'fa-tshirt' },
-        { id: 'setrika',  name: 'Setrika Saja',              price: 3000,  unit: 'kg',     icon: 'fa-temperature-low' },
-        { id: 'bijian',   name: 'Pakaian Satuan (Bijian)',   price: 2000,  unit: 'pcs',    icon: 'fa-socks' },
-        { id: 'bedcover', name: 'Bedcover',                  price: 25000, unit: 'pcs',    icon: 'fa-bed' },
-        { id: 'sprei',    name: 'Sprei',                     price: 10000, unit: 'pcs',    icon: 'fa-bed' },
-        { id: 'jas',      name: 'Jas / Safari',              price: 15000, unit: 'pcs',    icon: 'fa-user-tie' },
-        { id: 'sepatu',   name: 'Cuci Sepatu',               price: 20000, unit: 'pasang', icon: 'fa-shoe-prints' },
-        { id: 'karpet',   name: 'Cuci Karpet',               price: 12000, unit: 'meter',  icon: 'fa-scroll' }
+        { id: 'ck',       name: 'Cuci Kering (CK)',          price: 4000,  unit: 'kg',     icon: 'fa-tshirt', color: '#60a5fa' },
+        { id: 'cks',      name: 'Cuci Kering Setrika (CKS)', price: 6000,  unit: 'kg',     icon: 'fa-tshirt', color: '#22d3ee' },
+        // Layanan cepat: durationHours = lama pengerjaan, dipakai untuk estimasi selesai otomatis
+        { id: 'ck_kilat',    name: 'Cuci Kering Kilat (CK Kilat)',              price: 6000,  unit: 'kg', icon: 'fa-bolt', color: '#facc15',   durationHours: 24, badge: 'Kilat 1 hari' },
+        { id: 'cks_kilat',   name: 'Cuci Kering Setrika Kilat (CKS Kilat)',     price: 8000,  unit: 'kg', icon: 'fa-bolt', color: '#fb923c',   durationHours: 24, badge: 'Kilat 1 hari' },
+        { id: 'ck_ekspres',  name: 'Cuci Kering Ekspres (CK Ekspres)',          price: 8000,  unit: 'kg', icon: 'fa-rocket', color: '#f472b6', durationHours: 6,  badge: 'Ekspres 6 jam' },
+        { id: 'cks_ekspres', name: 'Cuci Kering Setrika Ekspres (CKS Ekspres)', price: 10000, unit: 'kg', icon: 'fa-rocket', color: '#c084fc', durationHours: 6,  badge: 'Ekspres 6 jam' },
+        { id: 'setrika',  name: 'Setrika Saja',              price: 3000,  unit: 'kg',     icon: 'fa-temperature-low', color: '#f87171' },
+        { id: 'bijian',   name: 'Pakaian Satuan (Bijian)',   price: 2000,  unit: 'pcs',    icon: 'fa-socks', color: '#4ade80' },
+        { id: 'bedcover', name: 'Bedcover',                  price: 25000, unit: 'pcs',    icon: 'fa-bed', color: '#818cf8' },
+        { id: 'sprei',    name: 'Sprei',                     price: 10000, unit: 'pcs',    icon: 'fa-bed', color: '#2dd4bf' },
+        { id: 'jas',      name: 'Jas / Safari',              price: 15000, unit: 'pcs',    icon: 'fa-user-tie', color: '#a3e635' },
+        { id: 'sepatu',   name: 'Cuci Sepatu',               price: 20000, unit: 'pasang', icon: 'fa-shoe-prints', color: '#fb7185' },
+        { id: 'karpet',   name: 'Cuci Karpet',               price: 12000, unit: 'meter',  icon: 'fa-scroll', color: '#d4a373' }
     ];
 
     // Aturan jumlah per satuan: langkah tombol +/-, minimum, jumlah desimal, tombol cepat
@@ -626,7 +632,7 @@
     // 6. MODAL (bottom-sheet di HP, kotak di tengah di layar lebar)
     // ---------------------------------------------------------------------
     const modalStack = [];
-    function openModal({ title = '', icon = '', body = '', footer = '', size = 'md', dismissible = true, onClose = null, id = '' }) {
+    function openModal({ title = '', icon = '', iconColor = '', body = '', footer = '', size = 'md', dismissible = true, onClose = null, id = '' }) {
         const sizes = { sm: 'sm:max-w-sm', md: 'sm:max-w-md', lg: 'sm:max-w-lg', xl: 'sm:max-w-xl' };
         const wrap = document.createElement('div');
         wrap.className = 'modal fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-4';
@@ -636,7 +642,7 @@
             <div class="modal-panel glass-panel glass-strong relative w-full ${sizes[size] || sizes.md} max-h-[92vh] max-h-[92dvh] flex flex-col rounded-t-2xl sm:rounded-2xl" role="dialog" aria-modal="true">
                 <div class="sm:hidden mx-auto mt-2 h-1 w-10 rounded-full bg-white/20"></div>
                 <div class="flex items-center justify-between gap-3 px-5 pt-3 sm:pt-4 pb-3 border-b border-white/10">
-                    <h3 class="text-lg font-bold text-white flex items-center gap-2 min-w-0">${icon ? `<i class="fas ${icon} text-cyan-400"></i>` : ''}<span class="truncate">${title}</span></h3>
+                    <h3 class="text-lg font-bold text-white flex items-center gap-2 min-w-0">${icon ? `<i class="fas ${icon} text-cyan-400"${iconColor ? ` style="color:${iconColor}"` : ''}></i>` : ''}<span class="truncate">${title}</span></h3>
                     ${dismissible ? '<button type="button" class="w-9 h-9 -mr-2 rounded-full text-gray-400 hover:text-white hover:bg-white/10" data-modal-close aria-label="Tutup"><i class="fas fa-times"></i></button>' : ''}
                 </div>
                 <div class="modal-body overflow-y-auto overscroll-contain px-5 py-4 flex-1">${body}</div>
@@ -849,6 +855,10 @@
         return DEFAULT_SERVICES.map((s) => ({ ...s, price: Number.isFinite(state.prices[s.id]) ? state.prices[s.id] : s.price }));
     }
     const serviceById = (id) => getServices().find((s) => s.id === id) || null;
+    // Ikon layanan berwarna di atas lingkaran lembut dengan warna yang sama
+    const hexA = (hex, a) => { const n = parseInt(String(hex || '#22d3ee').slice(1), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; };
+    const svcIcon = (s, size = 40) => `<span class="svc-icon inline-flex items-center justify-center rounded-full shrink-0" data-svc-color="${esc(s.color || '')}"
+        style="width:${size}px;height:${size}px;font-size:${Math.round(size * 0.45)}px;color:${s.color || '#22d3ee'};background:${hexA(s.color, 0.16)};box-shadow:inset 0 0 0 1px ${hexA(s.color, 0.35)}"><i class="fas ${s.icon}"></i></span>`;
 
     function sanitizePrices(p) {
         const out = {};
@@ -1135,9 +1145,10 @@
                 class="service-card group relative text-left bg-gray-800/80 border ${q ? 'border-cyan-500 shadow-[0_0_14px_rgba(6,182,212,0.35)]' : 'border-gray-700'} rounded-xl p-3 sm:p-4 hover:border-cyan-500 transition-all active:scale-[0.98] flex flex-col justify-between">
                 ${q ? `<span class="absolute top-2 right-2 text-[11px] font-bold bg-cyan-400 text-gray-900 rounded-full px-2 py-0.5">${esc(fmtQty(q, s.unit))}</span>` : ''}
                 <div>
-                    <div class="text-cyan-400 text-2xl mb-2"><i class="fas ${s.icon}"></i></div>
+                    <div class="mb-2">${svcIcon(s, 40)}</div>
                     <h4 class="text-white font-bold text-sm sm:text-base leading-snug mb-1 pr-6">${esc(s.name)}</h4>
-                    <p class="text-gray-400 text-xs sm:text-sm mb-3">${formatRp(s.price)} / ${s.unit}</p>
+                    <p class="text-gray-400 text-xs sm:text-sm ${s.badge ? 'mb-1.5' : 'mb-3'}">${formatRp(s.price)} / ${s.unit}</p>
+                    ${s.badge ? `<span class="badge mb-3 ${s.durationHours <= 6 ? 'border-fuchsia-400/60 bg-fuchsia-500/15 text-fuchsia-200' : 'border-amber-400/60 bg-amber-500/15 text-amber-200'}" data-speed-badge><i class="fas ${s.durationHours <= 6 ? 'fa-stopwatch' : 'fa-bolt'}"></i>${esc(s.badge)}</span>` : ''}
                 </div>
                 <span class="block w-full text-center bg-blue-600/30 group-hover:bg-blue-600 text-blue-300 group-hover:text-white border border-blue-500 rounded-lg py-1.5 text-sm transition-colors">
                     ${q ? '<i class="fas fa-pen mr-1"></i> Ubah' : '<i class="fas fa-plus mr-1"></i> Tambah'}
@@ -1223,7 +1234,7 @@
             return btns.join('');
         };
         const m = openModal({
-            title: esc(s.name), icon: s.icon, size: 'sm', id: 'qty-modal',
+            title: esc(s.name), icon: s.icon, iconColor: s.color, size: 'sm', id: 'qty-modal',
             body: `
                 <p class="text-sm text-gray-300 mb-4">Harga: <b class="text-cyan-300">${formatRp(s.price)}</b> / ${s.unit}</p>
                 <label class="lbl" for="qty-input">${s.unit === 'kg' ? 'Berat cucian' : 'Jumlah'} (${s.unit})</label>
@@ -1302,10 +1313,25 @@
         return toLocalDT(d);
     }
 
+    // Estimasi otomatis dari isi keranjang: pakai waktu PALING LAMA di antara layanan.
+    // Layanan biasa = estimasi bawaan (Pengaturan); Kilat = +24 jam; Ekspres = +6 jam.
+    function autoEstimasi(lines, now = new Date()) {
+        let best = null, label = '';
+        const consider = (d, l) => { if (!best || d.getTime() > best.getTime()) { best = d; label = l; } };
+        lines.forEach((l) => {
+            const s = serviceById(l.id);
+            if (s && s.durationHours) consider(new Date(now.getTime() + s.durationHours * 3600 * 1000), s.badge || `${s.durationHours} jam`);
+            else consider(parseLocalDT(defaultEstimasi(Number(state.settings.estimasiHari) || 0)), 'reguler');
+        });
+        if (!best) best = parseLocalDT(defaultEstimasi(Number(state.settings.estimasiHari) || 0));
+        return { value: toLocalDT(best), label, fast: !!label && label !== 'reguler' };
+    }
+
     function openCheckout() {
         const lines = cartLines();
         if (!lines.length) return showToast('Keranjang masih kosong!', 'warning');
         const custs = knownCustomers();
+        const autoEst = autoEstimasi(lines);
         const h4 = (icon, text) => `<h4 class="text-sm font-bold text-white mb-2 flex items-center gap-2"><i class="fas ${icon} text-cyan-400"></i> ${text}</h4>`;
         const opt = '<span class="text-gray-500 font-normal">(opsional)</span>';
         const m = openModal({
@@ -1333,9 +1359,9 @@
 
                 ${h4('fa-calendar-check', 'Estimasi Selesai')}
                 <div class="mb-5">
-                    <input id="co-est" type="datetime-local" class="inp" value="${defaultEstimasi(Number(state.settings.estimasiHari) || 0)}">
+                    <input id="co-est" type="datetime-local" class="inp" value="${autoEst.value}">
                     <p class="hint text-cyan-200/80" id="co-est-hint"></p>
-                    <div class="flex flex-wrap gap-2 mt-2">${[0, 1, 2, 3].map((d) => `<button type="button" class="chip text-xs" data-est-days="${d}">${d === 0 ? 'Hari ini' : d === 1 ? 'Besok' : '+' + d + ' hari'}</button>`).join('')}</div>
+                    <div class="flex flex-wrap gap-2 mt-2">${autoEst.fast ? `<button type="button" class="chip text-xs" data-est-auto><i class="fas ${autoEst.label.startsWith('Ekspres') ? 'fa-stopwatch' : 'fa-bolt'} mr-1"></i>${esc(autoEst.label)}</button>` : ''}${[0, 1, 2, 3].map((d) => `<button type="button" class="chip text-xs" data-est-days="${d}">${d === 0 ? 'Hari ini' : d === 1 ? 'Besok' : '+' + d + ' hari'}</button>`).join('')}</div>
                 </div>
 
                 ${h4('fa-tags', 'Diskon &amp; Biaya Tambahan ' + opt)}
@@ -1424,10 +1450,15 @@
         });
         el('#co-wa').addEventListener('input', waHint);
         // Tampilkan estimasi dalam format Indonesia (input bawaan HP bisa berformat lain)
-        const estHint = () => { const d = parseLocalDT(el('#co-est').value); el('#co-est-hint').innerHTML = d ? `<i class="far fa-calendar mr-1"></i>${HARI[d.getDay()]}, ${fmtDateTime(d)}` : 'Tanpa estimasi'; };
+        const estHint = () => {
+            const v = el('#co-est').value, d = parseLocalDT(v);
+            const auto = autoEst.fast && v === autoEst.value ? ` <span class="text-gray-400">&middot; otomatis (${esc(autoEst.label)})</span>` : '';
+            el('#co-est-hint').innerHTML = d ? `<i class="far fa-calendar mr-1"></i>${HARI[d.getDay()]}, ${fmtDateTime(d)}${auto}` : 'Tanpa estimasi';
+        };
         el('#co-est').addEventListener('input', estHint);
         el('#co-est').addEventListener('change', estHint);
         $$('[data-est-days]', m.el).forEach((b) => b.addEventListener('click', () => { el('#co-est').value = defaultEstimasi(Number(b.dataset.estDays)); estHint(); }));
+        $$('[data-est-auto]', m.el).forEach((b) => b.addEventListener('click', () => { el('#co-est').value = autoEst.value; estHint(); }));
         estHint();
         bindMoneyInput(el('#co-disc'), recalc);
         bindMoneyInput(el('#co-extra'), recalc);
@@ -2437,9 +2468,9 @@
                         ${getServices().map((x) => {
                             const def = DEFAULT_SERVICES.find((d) => d.id === x.id).price;
                             return `<div class="flex items-center gap-3 rounded-lg bg-gray-900/40 border border-gray-700/60 p-2.5">
-                                <i class="fas ${x.icon} text-cyan-400 w-5 text-center"></i>
+                                ${svcIcon(x, 32)}
                                 <div class="flex-1 min-w-0"><div class="text-sm text-white leading-tight">${esc(x.name)}</div>
-                                    <div class="text-[11px] text-gray-500">per ${x.unit}${x.price !== def ? ' · default ' + formatRp(def) : ''}</div></div>
+                                    <div class="text-[11px] text-gray-500">per ${x.unit}${x.badge ? ' · ' + esc(x.badge) : ''}${x.price !== def ? ' · default ' + formatRp(def) : ''}</div></div>
                                 <div class="relative w-32 shrink-0"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">Rp</span>
                                     <input class="inp !py-2 pl-9 text-right" inputmode="numeric" data-price-id="${x.id}" value="${fmtNum(x.price)}" aria-label="Harga ${esc(x.name)}"></div></div>`;
                         }).join('')}
